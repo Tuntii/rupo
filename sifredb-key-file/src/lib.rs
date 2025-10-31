@@ -112,13 +112,14 @@ impl FileKeyProvider {
 
         // Generate first KEK
         let kek_id = "kek_v1";
-        let kek_path = key_dir.join(format!("{kek_id}.key"));
+        let kek_filename = format!("{kek_id}.key");
+        let kek_path = key_dir.join(&kek_filename);
         let kek = generate_random_key(KEK_SIZE);
         write_key_file(&kek_path, &kek)?;
 
-        // Create symlink to current KEK
+        // Create symlink to current KEK (use relative path for portability)
         let current_link = key_dir.join("current");
-        create_symlink(&kek_path, &current_link)?;
+        create_symlink(kek_filename.as_ref(), &current_link)?;
 
         // Generate pepper
         let pepper_path = key_dir.join("pepper.key");
@@ -224,18 +225,19 @@ impl KeyProvider for FileKeyProvider {
     fn create_kek(&self) -> Result<String, KeyProviderError> {
         let version = self.next_kek_version()?;
         let kek_id = format!("kek_v{version}");
-        let kek_path = self.key_dir.join(format!("{kek_id}.key"));
+        let kek_filename = format!("{kek_id}.key");
+        let kek_path = self.key_dir.join(&kek_filename);
 
         // Generate new KEK
         let kek = generate_random_key(KEK_SIZE);
         write_key_file(&kek_path, &kek)?;
 
-        // Update current symlink
+        // Update current symlink (use relative path for portability)
         let current_link = self.key_dir.join("current");
         if current_link.exists() {
             fs::remove_file(&current_link)?;
         }
-        create_symlink(&kek_path, &current_link)?;
+        create_symlink(kek_filename.as_ref(), &current_link)?;
 
         Ok(kek_id)
     }

@@ -31,7 +31,7 @@ enum Commands {
     },
 }
 
-fn main() -> anyhow::Result<()> {
+fn main() {
     let cli = Cli::parse();
 
     match cli.command {
@@ -44,6 +44,4 @@ fn main() -> anyhow::Result<()> {
             println!("(Implementation pending)");
         }
     }
-
-    Ok(())
 }

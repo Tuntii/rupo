@@ -109,11 +109,7 @@ impl IndexContext {
     /// Creates a new index context.
     #[must_use]
     pub fn new(table_name: impl Into<String>, column_name: impl Into<String>) -> Self {
-        Self {
-            tenant_id: None,
-            table_name: table_name.into(),
-            column_name: column_name.into(),
-        }
+        Self { tenant_id: None, table_name: table_name.into(), column_name: column_name.into() }
     }
 
     /// Sets the tenant ID.
@@ -170,9 +166,8 @@ mod tests {
 
     #[test]
     fn test_encryption_context_display() {
-        let ctx = EncryptionContext::new("users", "email")
-            .with_tenant("tenant_123")
-            .with_version(2);
+        let ctx =
+            EncryptionContext::new("users", "email").with_tenant("tenant_123").with_version(2);
 
         assert_eq!(ctx.to_string(), "tenant_123|users|email|v2");
     }
@@ -191,9 +186,8 @@ mod tests {
 
     #[test]
     fn test_index_context_from_encryption_context() {
-        let enc_ctx = EncryptionContext::new("users", "email")
-            .with_tenant("tenant_123")
-            .with_version(2);
+        let enc_ctx =
+            EncryptionContext::new("users", "email").with_tenant("tenant_123").with_version(2);
 
         let idx_ctx = IndexContext::from(&enc_ctx);
         assert_eq!(idx_ctx.tenant_id(), Some("tenant_123"));

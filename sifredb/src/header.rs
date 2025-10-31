@@ -148,12 +148,14 @@ impl EncryptionHeader {
         bytes.push(self.version);
 
         // KEK ID length (1 byte) + KEK ID
+        // Safe cast: length validated above (line 124-128, max 255)
         #[allow(clippy::cast_possible_truncation)]
         let kek_id_len = self.kek_id.len() as u8;
         bytes.push(kek_id_len);
         bytes.extend_from_slice(self.kek_id.as_bytes());
 
         // Wrapped DEK length (2 bytes, big-endian) + wrapped DEK
+        // Safe cast: length validated above (line 130-135, max 65535)
         #[allow(clippy::cast_possible_truncation)]
         let wrapped_dek_len = self.wrapped_dek.len() as u16;
         bytes.extend_from_slice(&wrapped_dek_len.to_be_bytes());
@@ -163,6 +165,7 @@ impl EncryptionHeader {
         bytes.push(self.flags.as_u8());
 
         // Nonce length (1 byte) + nonce
+        // Safe cast: length validated above (line 137-142, max 255)
         #[allow(clippy::cast_possible_truncation)]
         let nonce_len = self.nonce.len() as u8;
         bytes.push(nonce_len);

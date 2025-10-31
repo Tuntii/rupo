@@ -179,15 +179,23 @@ mod tests {
 
     // RFC 5869 Test Vector (using HKDF-SHA256)
     // https://tools.ietf.org/html/rfc5869#appendix-A.1
+    // Test Case 1: Basic test with SHA-256
     #[test]
     fn test_hkdf_rfc5869_test_case_1() {
-        let ikm = hex::decode("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b").unwrap();
-        let salt = hex::decode("000102030405060708090a0b0c").unwrap();
-        let info = hex::decode("f0f1f2f3f4f5f6f7f8f9").unwrap();
-        let expected_okm = hex::decode(
-            "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865",
-        )
-        .unwrap();
+        // Input Key Material: 22 octets of 0x0b
+        const IKM_HEX: &str = "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b";
+        // Salt: 13 octets from 0x00 to 0x0c
+        const SALT_HEX: &str = "000102030405060708090a0b0c";
+        // Context/Info: 10 octets from 0xf0 to 0xf9
+        const INFO_HEX: &str = "f0f1f2f3f4f5f6f7f8f9";
+        // Expected Output: 42 octets
+        const EXPECTED_OKM_HEX: &str =
+            "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865";
+
+        let ikm = hex::decode(IKM_HEX).unwrap();
+        let salt = hex::decode(SALT_HEX).unwrap();
+        let info = hex::decode(INFO_HEX).unwrap();
+        let expected_okm = hex::decode(EXPECTED_OKM_HEX).unwrap();
 
         let hkdf = Hkdf::<Sha256>::new(Some(&salt), &ikm);
         let mut okm = vec![0u8; 42];

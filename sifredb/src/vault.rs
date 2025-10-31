@@ -237,6 +237,9 @@ mod tests {
         }
     }
 
+    // WARNING: This KeyProvider implementation uses simple XOR for DEK wrapping
+    // and is intended ONLY for testing purposes. DO NOT use in production.
+    // In production, use a secure key provider like FileKeyProvider or AWS KMS.
     impl KeyProvider for MockKeyProvider {
         fn create_kek(&self) -> Result<String, KeyProviderError> {
             let kek_id = format!("kek_{}", self.keks.lock().unwrap().len());

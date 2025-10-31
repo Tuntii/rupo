@@ -1,0 +1,157 @@
+project:
+  name: sifredb
+  vision: >
+    Rust tabanlı, alan-bazlı şifreleme + kör indeks + deterministik eşitlik
+    sorguları + anahtar rotasyonu (envelope encryption) + KMS entegrmanları
+    sağlayan bir crate. Uygulama ile DB arasına minimum sürtünme ile girer.
+
+  non_goals:
+    - Tüm metin üzerinde LIKE/substring arama (gerekmiyor)
+    - Homomorfik/arama yapılabilir kompleks kriptografi (gelecek araştırma)
+
+  stakeholders:
+    - owner: "Tunay Engin"
+    - reviewers: ["security-consultant@company", "db-architect@company"]
+
+requirements:
+  api_style:
+    - derive_macros: "#[derive(Encryptable)] ve #[enc(...)] alan öznitelikleri"
+    - trait_core: "KeyProvider, Vault"
+    - db_integrations: ["sqlx (PG/MySQL/SQLite)", "diesel (opsiyonel)"]
+  features:
+    - AEAD_default: "ChaCha20-Poly1305 (AEAD), AES-GCM donanım varsa"
+    - deterministic_mode: "AES-SIV (ya da eşdeğeri SIV), eşitlik sorguları"
+    - blind_index: "HMAC-SHA256 + pepper; sabit uzunluklu indeks"
+    - envelope_encryption: "DEK -> KEK ile sarım; KEK KMS/FS’te"
+    - key_rotation: "KEK rotasyonu ve hızlı rewrap CLI"
+    - multi_tenant: "HKDF(info=tenant|table|column|version)"
+    - audit_optional: "Ed25519 ile yazım imzası (opsiyon)"
+  constraints:
+    - msrv: "1.75+ (kararlaştır)"
+    - no_std: false
+    - perf_budget: "Satır başı encrypt <= 120µs @ 3.5GHz; idx <= 30µs"
+    - memory: "Sırların secrecy/zeroize ile tutulması"
+    - portability: "Linux/macOS/Windows CI"
+
+cryptography:
+  primitives:
+    aead:
+      preferred: "chacha20poly1305"
+      alt: "aes-gcm (aes-ni mevcutsa otomatik)"
+    deterministic: "aes-siv (misuse-resistant); nonce gerektirmez"
+    kdf: "hkdf(sha256)"
+    blind_index: "HMAC-SHA256(value || domain), pepper gizli"
+    signatures: "ed25519-dalek (audit opsiyon)"
+  key_model:
+    kek: "KMS/HSM/FileKey; versioned (kek_v1, kek_v2, ...)"
+    dek: "Tenant|table|column bağlamıyla türetilir, KEK ile sarılır"
+  header_format:
+    version: 1
+    fields: ["kek_id", "wrapped_dek_len", "flags", "nonce_len"]
+  security_notes:
+    - "Pepper yalnızca KMS/HSM/FileKeyProvider tarafında; uygulama koduna sızdırma"
+    - "Deterministik mod yalnızca eşitlik sorgusu gereken alanlarda"
+    - "Aynı DEK’i geniş kapsamda paylaşma: tenant|table|column bazında sınırla"
+    - "Yan kanal ve logging: sırları asla loglama"
+  external_review_needed: true
+
+deliverables:
+  crates:
+    - core: "sifredb"
+    - macros: "sifredb-derive"
+    - cli: "sifredb-cli"
+    - providers: ["sifredb-kms-aws", "sifredb-key-file"]
+  examples:
+    - "examples/sqlx_pg_user_lookup.rs"
+  docs:
+    - "ARC.md (mimari)", "SECURITY.md", "KEYS.md", "MIGRATIONS.md", "API.md"
+
+testing:
+  strategies:
+    - unit: "AEAD/SIV RFC vektörleri, header parse"
+    - property: "encrypt->decrypt==orig, farklı nonce/ctx senaryoları"
+    - fuzz: "cargo-fuzz: header decode, unwrap paths"
+    - miri: "UB taraması kritik çekirdek üzerinde"
+    - benches: "criterion: encrypt/idx/rewrap throughput"
+  acceptance:
+    - "PG üzerinde email eşitlik sorgusu demo; CI'da yeşil"
+    - "KEK rotasyonu sonrası rewrap benchmark: N satır/ sn"
+
+milestones:
+  - name: mvp
+    duration_days: 10
+    scope:
+      - "Vault + AEAD"
+      - "FileKeyProvider"
+      - "Blind index (HMAC) + domain separation"
+      - "sqlx PG örneği ve smoke test"
+      - "CLI: keygen/rewrap (file-based)"
+  - name: v0_2
+    duration_days: 10
+    scope:
+      - "AES-SIV deterministik mod"
+      - "AWS KMS provider"
+      - "Multi-tenant HKDF info"
+      - "Docs: SECURITY.md, KEYS.md"
+  - name: v0_3
+    duration_days: 10
+    scope:
+      - "Diesel entegrasyonu"
+      - "Audit imzaları (opsiyon)"
+      - "GCP/Azure provider (en az biri)"
+      - "MIGRATIONS.md + rewrap rehberi"
+
+tasks_breakdown:
+  - id: CORE-1
+    title: "KeyProvider trait + FileKeyProvider"
+    outputs: ["sifredb/src/key_provider.rs", "sifredb-key-file/"]
+    definition_of_done:
+      - "Yeni KEK yaratma, current_kek_id, wrap/unwrap çalışır"
+      - "Unit testler: pass"
+  - id: CORE-2
+    title: "Vault (AEAD + HKDF + header)"
+    outputs: ["sifredb/src/vault.rs"]
+    dod:
+      - "encrypt/decrypt RFC vektörlerine oturur"
+      - "criterion bench raporu"
+  - id: IDX-1
+    title: "Blind index modülü"
+    dod:
+      - "HMAC domain separation (tenant|table|column)"
+      - "Sabit uzunluk 16/32 bayt çıktılar"
+  - id: SQLX-1
+    title: "sqlx PG integration + example"
+  - id: CLI-1
+    title: "sifredb-cli: keygen/rewrap"
+  - id: SIV-1
+    title: "AES-SIV deterministik şifreleme"
+  - id: KMS-1
+    title: "AWS KMS provider + integration tests"
+
+repo_policy:
+  coding:
+    - "clippy: pedantic, nursery"
+    - "rustfmt: stable"
+    - "deny: advisories, bans, sources"
+  secrets:
+    - "git-secrets/pre-commit; test keys only"
+  ci:
+    - "GitHub Actions: linux/macos/windows, nextest, miri (nightly job), fuzz-smoke"
+  license: "Apache-2.0 OR MIT"
+  versioning: "SemVer; MSRV değişimi minor bump ile duyurulur"
+
+ai_orchestration:
+  planner_prompt: >
+    Bu PROJECT.yaml dosyasına göre milestone ve görevleri Kanban’a dök,
+    bağımlılıkları çöz ve her göreve net DoD yaz.
+  architect_prompt: >
+    API yüzeyi için modül ve trait tasarımını, error türlerini ve
+    public surface’i RFC olarak öner. Geriye dönük uyumluluğu koru.
+  coder_prompt: >
+    Seçili görevi uygula; güvenlik notlarını ihlal etme; unit+property test ekle;
+    örnek kodu derlenir bırak.
+  security_prompt: >
+    Kripto parametreleri, anahtar yaşam döngüsü ve header biçimini denetle;
+    yanlış kullanım risklerini ve logging sızıntılarını işaretle.
+  reviewer_prompt: >
+    PR’da public API kırılmalarını, doküman uyumunu ve bench sonuçlarını kontrol et.

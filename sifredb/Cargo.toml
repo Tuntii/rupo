@@ -21,6 +21,7 @@ thiserror.workspace = true
 
 [dev-dependencies]
 proptest = "1.4"
+hex = "0.4"
 
 [features]
 default = []

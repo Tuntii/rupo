@@ -7,9 +7,8 @@ fn main() {
     println!("============================\n");
 
     // Create an encryption context
-    let context = EncryptionContext::new("users", "email")
-        .with_tenant("tenant_123")
-        .with_version(1);
+    let context =
+        EncryptionContext::new("users", "email").with_tenant("tenant_123").with_version(1);
 
     println!("Encryption Context: {context}");
     println!("  - Tenant: {:?}", context.tenant_id());

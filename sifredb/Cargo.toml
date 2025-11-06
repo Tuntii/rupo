@@ -21,6 +21,9 @@ thiserror.workspace = true
 
 [dev-dependencies]
 proptest = "1.4"
+hex = "0.4"
+sifredb-key-file = { path = "../sifredb-key-file" }
+tempfile = "3.8"
 
 [features]
 default = []

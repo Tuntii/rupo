@@ -72,7 +72,7 @@ impl FileKeyProvider {
     /// - File permissions are incorrect (Unix only)
     pub fn new(key_dir: impl Into<PathBuf>) -> Result<Self, KeyProviderError> {
         let key_dir = key_dir.into();
-        
+
         if !key_dir.exists() {
             return Err(KeyProviderError::CreationFailed(format!(
                 "Key directory does not exist: {}",
@@ -86,7 +86,7 @@ impl FileKeyProvider {
         }
 
         let provider = Self { key_dir };
-        
+
         // Verify file permissions on Unix
         #[cfg(unix)]
         provider.check_permissions()?;
@@ -106,19 +106,20 @@ impl FileKeyProvider {
     /// Returns error if directory creation or key generation fails.
     pub fn init(key_dir: impl Into<PathBuf>) -> Result<(), KeyProviderError> {
         let key_dir = key_dir.into();
-        
+
         // Create directory if it doesn't exist
         fs::create_dir_all(&key_dir)?;
 
         // Generate first KEK
         let kek_id = "kek_v1";
-        let kek_path = key_dir.join(format!("{kek_id}.key"));
+        let kek_filename = format!("{kek_id}.key");
+        let kek_path = key_dir.join(&kek_filename);
         let kek = generate_random_key(KEK_SIZE);
         write_key_file(&kek_path, &kek)?;
 
-        // Create symlink to current KEK
+        // Create symlink to current KEK (use relative path for portability)
         let current_link = key_dir.join("current");
-        create_symlink(&kek_path, &current_link)?;
+        create_symlink(kek_filename.as_ref(), &current_link)?;
 
         // Generate pepper
         let pepper_path = key_dir.join("pepper.key");
@@ -134,11 +135,11 @@ impl FileKeyProvider {
         use std::os::unix::fs::PermissionsExt;
 
         let entries = fs::read_dir(&self.key_dir)?;
-        
+
         for entry in entries {
             let entry = entry?;
             let path = entry.path();
-            
+
             // Skip symlinks and directories
             if path.is_symlink() || path.is_dir() {
                 continue;
@@ -163,7 +164,7 @@ impl FileKeyProvider {
     /// Reads a KEK from disk.
     fn read_kek(&self, kek_id: &str) -> Result<SecretVec<u8>, KeyProviderError> {
         let kek_path = self.key_dir.join(format!("{kek_id}.key"));
-        
+
         if !kek_path.exists() {
             return Err(KeyProviderError::KekNotFound(kek_id.to_string()));
         }
@@ -178,25 +179,20 @@ impl FileKeyProvider {
     /// Resolves the current KEK symlink to get the KEK ID.
     fn resolve_current_kek(&self) -> Result<String, KeyProviderError> {
         let current_link = self.key_dir.join("current");
-        
+
         if !current_link.exists() {
             return Err(KeyProviderError::NoActiveKek);
         }
 
         let target = fs::read_link(&current_link)?;
-        let filename = target
-            .file_name()
-            .and_then(|n| n.to_str())
-            .ok_or_else(|| {
-                KeyProviderError::CreationFailed("Invalid current KEK symlink".to_string())
-            })?;
+        let filename = target.file_name().and_then(|n| n.to_str()).ok_or_else(|| {
+            KeyProviderError::CreationFailed("Invalid current KEK symlink".to_string())
+        })?;
 
         // Extract kek_id from "kek_v1.key" -> "kek_v1"
-        let kek_id = filename
-            .strip_suffix(".key")
-            .ok_or_else(|| {
-                KeyProviderError::CreationFailed("Invalid KEK filename format".to_string())
-            })?;
+        let kek_id = filename.strip_suffix(".key").ok_or_else(|| {
+            KeyProviderError::CreationFailed("Invalid KEK filename format".to_string())
+        })?;
 
         Ok(kek_id.to_string())
     }
@@ -212,7 +208,9 @@ impl FileKeyProvider {
             let filename_str = filename.to_string_lossy();
 
             // Parse "kek_v1.key" -> 1
-            if let Some(version_str) = filename_str.strip_prefix("kek_v").and_then(|s| s.strip_suffix(".key")) {
+            if let Some(version_str) =
+                filename_str.strip_prefix("kek_v").and_then(|s| s.strip_suffix(".key"))
+            {
                 if let Ok(version) = version_str.parse::<u32>() {
                     max_version = max_version.max(version);
                 }
@@ -227,18 +225,19 @@ impl KeyProvider for FileKeyProvider {
     fn create_kek(&self) -> Result<String, KeyProviderError> {
         let version = self.next_kek_version()?;
         let kek_id = format!("kek_v{version}");
-        let kek_path = self.key_dir.join(format!("{kek_id}.key"));
+        let kek_filename = format!("{kek_id}.key");
+        let kek_path = self.key_dir.join(&kek_filename);
 
         // Generate new KEK
         let kek = generate_random_key(KEK_SIZE);
         write_key_file(&kek_path, &kek)?;
 
-        // Update current symlink
+        // Update current symlink (use relative path for portability)
         let current_link = self.key_dir.join("current");
         if current_link.exists() {
             fs::remove_file(&current_link)?;
         }
-        create_symlink(&kek_path, &current_link)?;
+        create_symlink(kek_filename.as_ref(), &current_link)?;
 
         Ok(kek_id)
     }
@@ -249,7 +248,7 @@ impl KeyProvider for FileKeyProvider {
 
     fn wrap_dek(&self, kek_id: &str, dek: &[u8]) -> Result<Vec<u8>, KeyProviderError> {
         let kek = self.read_kek(kek_id)?;
-        
+
         // Use ChaCha20-Poly1305 to wrap the DEK
         let cipher = ChaCha20Poly1305::new_from_slice(kek.expose_secret())
             .map_err(|e| KeyProviderError::WrapFailed(format!("Invalid KEK: {e}")))?;
@@ -272,22 +271,25 @@ impl KeyProvider for FileKeyProvider {
         Ok(wrapped)
     }
 
-    fn unwrap_dek(&self, kek_id: &str, wrapped_dek: &[u8]) -> Result<SecretVec<u8>, KeyProviderError> {
+    fn unwrap_dek(
+        &self,
+        kek_id: &str,
+        wrapped_dek: &[u8],
+    ) -> Result<SecretVec<u8>, KeyProviderError> {
         if wrapped_dek.len() < NONCE_SIZE {
-            return Err(KeyProviderError::UnwrapFailed(
-                "Wrapped DEK too short".to_string(),
-            ));
+            return Err(KeyProviderError::UnwrapFailed("Wrapped DEK too short".to_string()));
         }
 
         let kek = self.read_kek(kek_id)?;
-        
+
         // Use ChaCha20-Poly1305 to unwrap the DEK
         let cipher = ChaCha20Poly1305::new_from_slice(kek.expose_secret())
             .map_err(|e| KeyProviderError::UnwrapFailed(format!("Invalid KEK: {e}")))?;
 
         // Split nonce and ciphertext
         let (nonce_bytes, ciphertext) = wrapped_dek.split_at(NONCE_SIZE);
-        let nonce_array: [u8; NONCE_SIZE] = nonce_bytes.try_into()
+        let nonce_array: [u8; NONCE_SIZE] = nonce_bytes
+            .try_into()
             .map_err(|_| KeyProviderError::UnwrapFailed("Invalid nonce size".to_string()))?;
         let nonce = Nonce::from(nonce_array);
 
@@ -301,7 +303,7 @@ impl KeyProvider for FileKeyProvider {
 
     fn get_pepper(&self) -> Result<Option<SecretVec<u8>>, KeyProviderError> {
         let pepper_path = self.key_dir.join("pepper.key");
-        
+
         if !pepper_path.exists() {
             return Ok(None);
         }

@@ -28,13 +28,21 @@
 #![warn(clippy::pedantic, clippy::nursery)]
 #![allow(clippy::module_name_repetitions)]
 
+pub mod blind_index;
 pub mod context;
 pub mod error;
+pub mod header;
+pub mod kdf;
 pub mod key_provider;
+pub mod vault;
 
 pub mod prelude {
     //! Convenience re-exports for common use.
+    pub use crate::blind_index::{generate_blind_index, generate_deterministic_index};
     pub use crate::context::{EncryptionContext, IndexContext};
     pub use crate::error::{Error, KeyProviderError};
+    pub use crate::header::{EncryptionHeader, HeaderFlags};
+    pub use crate::kdf::{derive_dek, generate_dek};
     pub use crate::key_provider::KeyProvider;
+    pub use crate::vault::{CipherMode, Vault};
 }

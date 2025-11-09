@@ -1,0 +1,26 @@
+[package]
+name = "sifredb-kms-aws"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "AWS KMS key provider for SifreDB"
+keywords = ["encryption", "kms", "aws", "security"]
+categories = ["cryptography", "api-bindings"]
+
+[dependencies]
+sifredb = { path = "../sifredb" }
+aws-config = "1.1"
+aws-sdk-kms = "1.13"
+async-trait.workspace = true
+secrecy.workspace = true
+zeroize.workspace = true
+thiserror.workspace = true
+tokio = { version = "1.35", features = ["rt", "macros"] }
+base64 = "0.21"
+sha2.workspace = true
+
+[dev-dependencies]
+tokio = { version = "1.35", features = ["full"] }

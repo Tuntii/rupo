@@ -42,6 +42,23 @@ pub enum Error {
     #[error("blind index generation failed: {0}")]
     IndexGenerationFailed(String),
 
+    /// Invalid key length
+    #[error("invalid key length: expected {expected} bytes, got {actual} bytes")]
+    InvalidKeyLength {
+        /// Expected key length
+        expected: usize,
+        /// Actual key length
+        actual: usize,
+    },
+
+    /// Encryption operation failed (generic)
+    #[error("encryption error: {0}")]
+    Encryption(String),
+
+    /// Decryption operation failed (generic)
+    #[error("decryption error: {0}")]
+    Decryption(String),
+
     /// I/O operation failed
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),

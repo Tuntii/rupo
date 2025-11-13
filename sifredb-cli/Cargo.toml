@@ -7,12 +7,14 @@ authors.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "CLI tool for SifreDB key management"
+keywords = ["encryption", "cli", "key-management"]
+categories = ["command-line-utilities", "cryptography"]
 
 [[bin]]
 name = "sifredb"
 path = "src/main.rs"
 
 [dependencies]
-sifredb = { path = "../sifredb" }
+sifredb = { version = "0.1.0", path = "../sifredb" }
 clap = { version = "4.5", features = ["derive"] }
 anyhow = "1.0"

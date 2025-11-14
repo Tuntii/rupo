@@ -11,7 +11,7 @@ keywords = ["encryption", "kms", "aws", "security"]
 categories = ["cryptography", "api-bindings"]
 
 [dependencies]
-sifredb = { version = "0.1.0", path = "../sifredb" }
+sifredb = { version = "0.1.1", path = "../sifredb" }
 aws-config = "1.1"
 aws-sdk-kms = "1.13"
 async-trait.workspace = true

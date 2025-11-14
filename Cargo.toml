@@ -9,12 +9,12 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 rust-version = "1.75"
 authors = ["Tunay Engin"]
 license = "Apache-2.0 OR MIT"
-repository = "https://github.com/tunayengin/sifredb"
+repository = "https://github.com/Tuntii/sifredb"
 
 [workspace.dependencies]
 # Crypto primitives

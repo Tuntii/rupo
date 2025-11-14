@@ -4,7 +4,7 @@ A Rust library for field-level encryption with envelope encryption and blind ind
 
 [![Crates.io](https://img.shields.io/crates/v/sifredb.svg)](https://crates.io/crates/sifredb)
 [![Documentation](https://docs.rs/sifredb/badge.svg)](https://docs.rs/sifredb)
-[![License](https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-blue.svg)](https://github.com/tunayengin/sifredb)
+[![License](https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-blue.svg)](https://github.com/Tuntii/sifredb)
 
 ## Features
 
